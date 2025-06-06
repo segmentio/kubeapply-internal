@@ -36,6 +36,26 @@ lambda-zip: clean kubeapply-lambda kubeapply-lambda-kubeapply
 kubeapply-server: data
 	go build $(LDFLAGS) -o build/kubeapply-server ./cmd/kubeapply-server
 
+# Lambda image targets
+.PHONY: build-lambda-image
+build-lambda-image:
+	docker build \
+		-f Dockerfile.lambda \
+		--build-arg VERSION_REF=$(VERSION_REF) \
+		-t kubeapply-lambda:$(VERSION_REF) \
+		.
+
+.PHONY: publish-lambda-image
+publish-lambda-image:
+	imager buildpush . \
+		-f Dockerfile.lambda \
+		-d all \
+		--repository=kubeapply-lambda \
+		--build-arg VERSION_REF=$(VERSION_REF) \
+		--extra-tag=$(VERSION_REF) \
+		--destination-aliases regions.yaml \
+		--platform linux/amd64
+
 # Test and formatting targets
 .PHONY: test
 test: data vet $(TEST_KUBECONFIG)

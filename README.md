@@ -10,6 +10,8 @@
   * [Usage (Github webhooks)](#usage-github-webhooks)
   * [Experimental features](#experimental-features)
   * [Testing](#testing)
+  * [Internal Repository Synchronization](#internal-repository-synchronization)
+  * [CI/CD Process](#ci/cd-process)
 
 ## Overview
 
@@ -384,3 +386,172 @@ kubeapply pull-request \
 
 This will respond locally using the codepath that would be executed
 in response to a Github webhook for the associated repo and pull request.
+
+## Internal Repository Synchronization
+
+This repository is an internal fork of [segmentio/kubeapply](https://github.com/segmentio/kubeapply) that contains our internal CI/CD pipeline configuration. To maintain synchronization with the upstream public repository, follow these steps:
+
+### Adding the Upstream Remote
+
+If you haven't already, add the upstream remote (only needed once):
+
+```bash
+git remote add upstream https://github.com/segmentio/kubeapply.git
+git remote set-url --push upstream DISABLED  # Prevent accidental pushes to public repo
+```
+
+### Syncing Process
+
+1. **Before syncing:**
+   - Ensure your local `main` branch is up to date with this internal repository
+   - Check that you don't have any uncommitted changes
+
+2. **Sync with upstream:**
+   ```bash
+   # Update your local copy of the upstream repository
+   git fetch upstream
+
+   # Switch to your local main branch
+   git checkout main
+
+   # Merge upstream changes
+   git merge upstream/main
+
+   # Push changes to the internal repository
+   git push origin main
+   ```
+
+3. **For specific releases/tags:**
+   ```bash
+   # Fetch all tags from upstream
+   git fetch upstream --tags
+
+   # To sync a specific tag
+   git checkout tags/<tag_name> -b sync-<tag_name>
+   
+   # Push the tag to the internal repository
+   git push origin sync-<tag_name>
+   ```
+
+### Important Notes
+
+- Always review changes from upstream before pushing to ensure no internal configurations or secrets are overwritten
+- The `staging` branch is used for staging deployments and the `main` branch for production
+- After syncing, the Buildkite pipeline will automatically trigger to build and validate the changes
+- In case of merge conflicts:
+  1. Resolve conflicts favoring upstream changes for core functionality
+  2. Preserve our internal pipeline configurations and any internal customizations
+  3. Document any significant conflict resolutions in the merge commit message
+
+### Troubleshooting
+
+If you encounter issues during synchronization:
+1. Never force push to shared branches (`main` or `staging`)
+2. If the sync becomes complex, create a new branch and use `git cherry-pick` to selectively apply upstream changes
+3. Consult the DevOps team if you're unsure about resolving conflicts between upstream and internal changes
+
+## CI/CD Process
+
+This internal repository includes an automated CI/CD pipeline for building and deploying the `kubeapply-lambda` Docker image. The process is implemented using Buildkite and handles both staging and production deployments.
+
+### Release Process
+
+#### Staging Releases
+1. Create a branch from `main` and make your changes
+2. Run `make build-lambda-image` locally to test the build
+3. Push your changes to a branch and create a pull request
+4. Once the PR is approved and merged to the `staging` branch:
+   - Buildkite automatically triggers the pipeline
+   - Tests are run
+   - Lambda image is built and pushed to staging ECR
+   - You'll receive a notification with the new image tag to update in Terraform
+
+5. Update Terraform Configuration (Staging):
+   ```hcl
+   # In terracode-infra/.../staging/config.tf
+   module "kubeapply_lambda" {
+     source = "..."
+     lambda_image_tag = "v1.2.3-dev"  # Use the tag from the pipeline notification
+   }
+   ```
+
+#### Production Releases
+1. After testing in staging, merge the `staging` branch to `main`
+2. The Buildkite pipeline will:
+   - Run tests again
+   - Build and push the Lambda image to production ECR
+   - Provide the image tag for Terraform updates
+
+3. Update Terraform Configuration (Production):
+   ```hcl
+   # In terracode-infra/.../production/config.tf
+   module "kubeapply_lambda" {
+     source = "..."
+     lambda_image_tag = "v1.2.3"  # Use the tag from the pipeline notification
+   }
+   ```
+
+### Image Tagging Strategy
+
+The image tags are derived from the public repository's git tags to maintain traceability:
+
+- Format: `v{major}.{minor}.{patch}[-dev]`
+- Examples:
+  - `v1.2.3` - Release version from a tagged commit
+  - `v1.2.3-dev` - Development version with uncommitted changes
+  - `abc123de` - Short commit SHA if no version tag is available
+
+To trace an image back to its source:
+1. Find the image tag from the ECR repository or Terraform configuration
+2. If it's a version tag (e.g., `v1.2.3`):
+   ```bash
+   git fetch upstream --tags
+   git checkout tags/v1.2.3
+   ```
+3. If it's a commit SHA:
+   ```bash
+   git fetch upstream
+   git checkout abc123de
+   ```
+
+### Rollback Procedures
+
+If you need to rollback a deployment:
+
+1. **Find the Previous Stable Version:**
+   ```bash
+   # List previous deployments in Terraform state
+   terraform state show module.kubeapply_lambda
+   ```
+   Or check ECR for the previous image tag.
+
+2. **Update Terraform Configuration:**
+   ```hcl
+   module "kubeapply_lambda" {
+     source = "..."
+     lambda_image_tag = "v1.2.2"  # Previous stable version
+   }
+   ```
+
+3. **Apply the Change:**
+   ```bash
+   # For staging
+   terraform workspace select staging
+   terraform plan    # Verify the changes
+   terraform apply   # Apply the rollback
+
+   # For production
+   terraform workspace select production
+   terraform plan    # Verify the changes
+   terraform apply   # Apply the rollback
+   ```
+
+4. **Verify the Rollback:**
+   - Check AWS Lambda console to confirm the function is using the previous image
+   - Monitor application logs and metrics
+   - Verify the Lambda function is responding to GitHub webhooks correctly
+
+5. **Document the Rollback:**
+   - Create a post-mortem issue
+   - Document the reason for rollback
+   - Track any fixes needed before re-attempting the upgrade
