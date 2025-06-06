@@ -12,11 +12,26 @@ steps:
     commands:
       - make kubeapply
 
+  - label: ":wrench: Install CI dependencies"
+    agents:
+      queue: v1
+    key: install-deps
+    commands:
+      - mkdir -p deps
+      - mkdir -p "${HOME}/local/bin"
+      - cd deps && ../scripts/pull-deps.sh && cd -
+      - export PATH="${HOME}/local/bin:$PATH"
+      - env | grep PATH
+      - ls -al "${HOME}/local/bin"
+      - which -a helm
+
   - label: ":test_tube: Test"
     agents:
       queue: v1
     key: test
+    depends_on: install-deps
     commands:
+      - export PATH="${HOME}/local/bin:$PATH"
       - make test-ci
 
   - label: ":go: Build"
