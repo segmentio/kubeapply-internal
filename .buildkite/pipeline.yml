@@ -4,6 +4,7 @@ env:
   GOFLAGS: "-mod=vendor"
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
 
+
 steps:
   - label: ":wrench: Install CI dependencies"
     agents:

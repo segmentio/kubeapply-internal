@@ -2,6 +2,8 @@ ifndef VERSION_REF
 	VERSION_REF ?= $(shell git describe --tags --always --dirty="-dev")
 endif
 
+GO := $(shell command -v go)
+
 LDFLAGS := -ldflags='-s -w -X "main.VersionRef=$(VERSION_REF)"'
 export GOFLAGS := -trimpath
 
@@ -13,28 +15,28 @@ LAMBDAZIP := kubeapply-lambda-$(VERSION_REF).zip
 # Main targets
 .PHONY: kubeapply
 kubeapply: data
-	go build $(LDFLAGS) -o build/kubeapply ./cmd/kubeapply
+	$(GO) build $(LDFLAGS) -o build/kubeapply ./cmd/kubeapply
 
 .PHONY: install
 install: data
-	go install $(LDFLAGS) ./cmd/kubeapply
+	$(GO) install $(LDFLAGS) ./cmd/kubeapply
 
 # Lambda and server-related targets
 .PHONY: kubeapply-lambda
 kubeapply-lambda: data
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -tags lambda.norpc -o build/kubeapply-lambda ./cmd/kubeapply-lambda
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build $(LDFLAGS) -tags lambda.norpc -o build/kubeapply-lambda ./cmd/kubeapply-lambda
 
 .PHONY: kubeapply-lambda-kubeapply
 kubeapply-lambda-kubeapply: data
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o build/kubeapply ./cmd/kubeapply
+	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o build/kubeapply ./cmd/kubeapply
 
 .PHONY: lambda-zip
 lambda-zip: clean kubeapply-lambda kubeapply-lambda-kubeapply
-	$Q./scripts/create-lambda-bundle.sh $(LAMBDAZIP)
+	./scripts/create-lambda-bundle.sh $(LAMBDAZIP)
 
 .PHONY: kubeapply-server
 kubeapply-server: data
-	go build $(LDFLAGS) -o build/kubeapply-server ./cmd/kubeapply-server
+	$(GO) build $(LDFLAGS) -o build/kubeapply-server ./cmd/kubeapply-server
 
 # Lambda image targets
 .PHONY: build-lambda-image
@@ -59,17 +61,17 @@ publish-lambda-image:
 # Test and formatting targets
 .PHONY: test
 test: kubeapply data vet $(TEST_KUBECONFIG)
-	PATH=$(CURDIR)/build:$$PATH KIND_ENABLED=true go test -count=1 -cover ./...
+	PATH=$(CURDIR)/build:$$PATH KIND_ENABLED=true $(GO) test -count=1 -cover ./...
 
 .PHONY: test-ci
 test-ci: data vet
 	# Kind is not supported in CI yet.
 	# TODO: Get this working.
-	PATH=$(CURDIR)/build:$$PATH KIND_ENABLED=false go test -count=1 -cover ./...
+	PATH=$(CURDIR)/build:$$PATH KIND_ENABLED=false $(GO) test -count=1 -cover ./...
 
 .PHONY: vet
 vet: data
-	go vet ./...
+	$(GO) vet ./...
 
 .PHONY: data
 data: go-bindata
@@ -93,7 +95,7 @@ $(TEST_KUBECONFIG):
 .PHONY: go-bindata
 go-bindata:
 ifeq (, $(shell which go-bindata))
-	go install github.com/kevinburke/go-bindata/v4/...@latest
+	$(GO) install github.com/kevinburke/go-bindata/v4/...@latest
 endif
 
 .PHONY: clean
