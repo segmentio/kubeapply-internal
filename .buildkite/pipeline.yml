@@ -1,0 +1,55 @@
+env:
+  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
+  GOPRIVATE: "github.com/segmentio"
+  GOFLAGS: "-mod=vendor"
+  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
+
+steps:
+  - label: ":package: Install dependencies"
+    agents:
+      queue: v1
+    key: kubeapply
+    commands:
+      - make kubeapply
+
+  - label: ":test_tube: Test"
+    agents:
+      queue: v1
+    key: test
+    commands:
+      - make test-ci
+
+  - label: ":go: Build"
+    agents:
+      queue: v1
+    key: build
+    commands:
+      - make lambda-zip
+      - make build-lambda-image
+
+  - group: ":ecr: Publish Lambda"
+    if: 'build.branch == "main"'
+    steps:
+      - label: ":ecr: Publish Lambda Image"
+        agents:
+          queue: v1
+        key: publish-lambda
+        env:
+          SEGMENT_CONTEXTS: "ecr"
+        commands:
+          - make publish-lambda-image
+
+      - label: ":terraform: Notify for Environment Updates"
+        agents:
+          queue: v1
+        commands: |
+          echo "--- :terraform: New kubeapply-lambda image available"
+          echo "Image tag '${VERSION_REF}' has been published to all regions."
+          echo ""
+          echo "To deploy to staging:"
+          echo "1. Update lambda_image_tag in staging Terraform:"
+          echo "   terraform workspaces/staging/*/config.tf"
+          echo ""
+          echo "2. After staging validation, update production:"
+          echo "   terraform workspaces/production/*/config.tf"
+        depends_on: publish-lambda
