@@ -5,13 +5,6 @@ env:
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
 
 steps:
-  - label: ":package: Install dependencies"
-    agents:
-      queue: v1
-    key: kubeapply
-    commands:
-      - make kubeapply
-
   - label: ":wrench: Install CI dependencies"
     agents:
       queue: v1
@@ -25,11 +18,19 @@ steps:
       - ls -al "${HOME}/local/bin"
       - which -a helm
 
+  - label: ":package: Install dependencies"
+    agents:
+      queue: v1
+    key: kubeapply
+    depends_on: install-deps
+    commands:
+      - make kubeapply
+
   - label: ":test_tube: Test"
     agents:
       queue: v1
     key: test
-    depends_on: install-deps
+    depends_on: kubeapply
     commands:
       - export PATH="${HOME}/local/bin:$PATH"
       - make test-ci
@@ -38,6 +39,7 @@ steps:
     agents:
       queue: v1
     key: build
+    depends_on: kubeapply
     commands:
       - make lambda-zip
       - make build-lambda-image
@@ -49,6 +51,7 @@ steps:
         agents:
           queue: v1
         key: publish-lambda
+        depends_on: build
         env:
           SEGMENT_CONTEXTS: "ecr"
         commands:
@@ -57,6 +60,7 @@ steps:
       - label: ":terraform: Notify for Environment Updates"
         agents:
           queue: v1
+        depends_on: publish-lambda
         commands: |
           echo "--- :terraform: New kubeapply-lambda image available"
           echo "Image tag '${VERSION_REF}' has been published to all regions."

@@ -65,7 +65,7 @@ test: kubeapply data vet $(TEST_KUBECONFIG)
 test-ci: data vet
 	# Kind is not supported in CI yet.
 	# TODO: Get this working.
-	KIND_ENABLED=false go test -count=1 -cover ./...
+	PATH=$(CURDIR)/build:$$PATH KIND_ENABLED=false go test -count=1 -cover ./...
 
 .PHONY: vet
 vet: data
