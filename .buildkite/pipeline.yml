@@ -36,7 +36,7 @@ steps:
     key: test
     agents:
       queue: v1
-    depends_on: lint # Tests should run after successful linting
+    depends_on: bootstrap_dependencies
     commands:
       - echo "--- Running Tests"
       # make test-ci should handle its own dependencies like 'make data' if needed
@@ -46,7 +46,7 @@ steps:
     key: build
     agents:
       queue: v1
-    depends_on: lint # Build can run in parallel with tests, but after linting
+    depends_on: bootstrap_dependencies
     commands:
       - echo "--- Building Artifacts"
       # These make targets should handle their own dependencies (e.g., 'make data')
