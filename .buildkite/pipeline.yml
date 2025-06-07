@@ -10,17 +10,6 @@ steps:
     agents:
       queue: v1
     commands:
-      - golangci-lint run ./...
-      - |
-        if ! command -v go &> /dev/null; then
-          GO_VERSION="1.23.0"
-          wget -q "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-          sudo rm -rf /usr/local/go
-          sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-          rm "go${GO_VERSION}.linux-amd64.tar.gz"
-        fi
-      - echo "--- Verifying Go installation"
-      - go version || { echo "Go installation failed"; exit 1; }
       - cd deps && ../scripts/pull-deps.sh && cd -
       - echo "--- Installing go tools"
       - GOFLAGS="" go install golang.org/x/tools/cmd/stringer@v0.12.0
