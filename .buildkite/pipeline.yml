@@ -10,11 +10,12 @@ steps:
     agents:
       queue: v1
     key: install-deps
+    env:
+      PATH: "/go/bin:${HOME}/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     commands:
       - mkdir -p deps
       - mkdir -p "${HOME}/local/bin"
       - cd deps && ../scripts/pull-deps.sh && cd -
-      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
       - env | grep PATH
       - ls -al "${HOME}/local/bin"
       - which -a helm
@@ -24,6 +25,8 @@ steps:
       queue: v1
     key: kubeapply
     depends_on: install-deps
+    env:
+      PATH: "/go/bin:${HOME}/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     commands:
       - echo "--- Go Environment Check"
       - which go || echo "Go not found in PATH!"
@@ -38,8 +41,9 @@ steps:
       queue: v1
     key: test
     depends_on: kubeapply
+    env:
+      PATH: "/go/bin:${HOME}/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     commands:
-      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
       - echo "--- Go Environment Check"
       - which go || echo "Go not found in PATH!"
       - go version || echo "Go version check failed!"
@@ -52,8 +56,9 @@ steps:
       queue: v1
     key: build
     depends_on: kubeapply
+    env:
+      PATH: "/go/bin:${HOME}/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     commands:
-      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
       - echo "--- Go Environment Check"
       - which go || echo "Go not found in PATH!"
       - go version || echo "Go version check failed!"
