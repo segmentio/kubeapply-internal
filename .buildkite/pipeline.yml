@@ -1,5 +1,5 @@
 env:
-  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
+  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23:latest"
   GOPRIVATE: "github.com/segmentio"
   GOFLAGS: "-mod=vendor" # Project-specific Go flags
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk" # Default Segment contexts
