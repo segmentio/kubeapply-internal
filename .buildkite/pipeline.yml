@@ -3,9 +3,10 @@ env:
   GOPRIVATE: "github.com/segmentio"
   GOFLAGS: "-mod=vendor"
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
-  PATH: "${HOME}/go/bin:${HOME}/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/go/bin:$${PATH}"
+  PATH: "/usr/local/go/bin:${HOME}/go/bin:${HOME}/local/bin:/usr/local/bin:/usr/bin:/bin:$${PATH}"
   GOPATH: "${HOME}/go"
   HOME: "/var/lib/buildkite-agent"
+  GOROOT: "/usr/local/go"
 
 
 steps:
@@ -16,6 +17,10 @@ steps:
     commands:
       - mkdir -p deps
       - mkdir -p "${HOME}/local/bin"
+      - mkdir -p "${HOME}/go"
+      - echo "--- Verifying Go installation"
+      - which go || { echo "Go not found, checking installation..."; ls -la /usr/local/go/bin/; }
+      - go version || { echo "Go not working, please check installation"; exit 1; }
       - cd deps && ../scripts/pull-deps.sh && cd -
       - echo "--- Installing go tools"
       - GOFLAGS="" go install golang.org/x/tools/cmd/stringer@v0.12.0
