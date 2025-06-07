@@ -1,49 +1,55 @@
 env:
   SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
   GOPRIVATE: "github.com/segmentio"
-  GOFLAGS: "-mod=vendor"
-  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
+  GOFLAGS: "-mod=vendor" # Project-specific Go flags
+  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk" # Default Segment contexts
+  # Explicitly set GOPATH and augment PATH for Go tools and custom scripts
+  # Assumes Go itself is in /usr/local/go/bin from the buildkite image
+  GOPATH: "${HOME}/go"
+  PATH: "/usr/local/go/bin:${HOME}/go/bin:${HOME}/local/bin:$${PATH}"
 
 steps:
-  - label: ":golangci-lint: Lint"
-    key: lint
+  - label: ":gear: Bootstrap Dependencies"
+    key: bootstrap_dependencies
     agents:
       queue: v1
     commands:
+      - echo "--- Setting up directories"
+      - mkdir -p deps "${HOME}/local/bin" "${HOME}/go/bin"
+      - echo "HOME: ${HOME}"
+      - echo "GOPATH: ${GOPATH}"
+      - echo "PATH: ${PATH}"
+      - echo "--- Installing external dependencies (helm, kubectl, etc.)"
       - cd deps && ../scripts/pull-deps.sh && cd -
-      - echo "--- Installing go tools"
+      - echo "--- Verifying external dependencies"
+      - which -a helm && helm version || { echo "Helm not found or not working. Check PATH and pull-deps.sh script."; exit 1; }
+      - echo "--- Installing Go build tools (go-bindata, stringer)"
+      # Ensure go-bindata is installed (Makefile target handles if-not-exists logic)
+      - make go-bindata
+      # Install stringer
       - GOFLAGS="" go install golang.org/x/tools/cmd/stringer@v0.12.0
-      - GOFLAGS="" go install github.com/kevinburke/go-bindata/v4/go-bindata@latest
-      - echo "--- Verifying PATH and dependencies"
-      - echo "PATH=$PATH"
-      - echo "GOPATH=$GOPATH"
-      - echo "HOME=$HOME"
-      - ls -al "${HOME}/local/bin"
-      - echo "--- Verifying required binaries"
-      - which -a helm
-      - helm version || { echo "Helm not found or not working"; exit 1; }
-      - which -a go-bindata
-      - go-bindata -version || { echo "go-bindata not found or not working"; exit 1; }
-      - which -a stringer || { echo "stringer not found or not working"; exit 1; }
+      - echo "--- Verifying Go build tools"
+      - which -a go-bindata && go-bindata -version || { echo "go-bindata not found or not working. Check PATH and GOPATH."; exit 1; }
+      - which -a stringer || { echo "stringer not found or not working. Check PATH and GOPATH."; exit 1; }
 
   - label: ":golang::test_tube::coverage: Test"
     key: test
     agents:
       queue: v1
-    depends_on: lint
+    depends_on: lint # Tests should run after successful linting
     commands:
-      - mkdir -p deps
-      - cd deps && ../scripts/pull-deps.sh && cd -
+      - echo "--- Running Tests"
+      # make test-ci should handle its own dependencies like 'make data' if needed
       - make test-ci
 
   - label: ":clippy: Build"
     key: build
     agents:
       queue: v1
-    depends_on: lint
+    depends_on: lint # Build can run in parallel with tests, but after linting
     commands:
-      - mkdir -p deps
-      - cd deps && ../scripts/pull-deps.sh && cd -
+      - echo "--- Building Artifacts"
+      # These make targets should handle their own dependencies (e.g., 'make data')
       - make kubeapply
       - make lambda-zip
       - make build-lambda-image
@@ -55,8 +61,9 @@ steps:
         agents:
           queue: v1
         key: publish-lambda
-        depends_on: build
+        depends_on: build # Depends on the build step completing successfully
         env:
+          # Override SEGMENT_CONTEXTS for this step if needed, or rely on top-level
           SEGMENT_CONTEXTS: "ecr"
         commands:
           - make publish-lambda-image
