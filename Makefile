@@ -94,12 +94,6 @@ $(TEST_KUBECONFIG):
 
 .PHONY: go-bindata
 go-bindata:
-	@echo "DEBUGGING Go environment:"
-	@echo "PATH: $$PATH"
-	@echo "which go: $$(which go 2>&1 || echo 'go command not found')"
-	@echo "go version: $$(go version 2>&1 || echo 'go version failed')"
-	@echo "GO variable: $(GO)"
-	@echo "End of debugging info"
 ifeq (, $(shell which go-bindata))
 	go install github.com/kevinburke/go-bindata/v4/...@latest
 endif
