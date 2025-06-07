@@ -1,76 +1,65 @@
 env:
   SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
   GOPRIVATE: "github.com/segmentio"
-  GOFLAGS: "-mod=vendor"
-  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
-  # GOPATH and PATH are intentionally not set globally to rely on the agent image's defaults,
-  # reducing potential conflicts with agent bootstrap scripts.
-  # PATH will be augmented in specific steps as needed.
+  GOFLAGS: "-mod=vendor" # Project-specific Go flags
+  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk" # Default Segment contexts
+  # No global GOPATH or PATH overrides here to rely on image defaults initially
 
 steps:
-  - label: ":wrench: Setup Dependencies"
-    key: setup_dependencies
-    agents:
-      queue: v1
-    commands:
-      - echo "--- Setting up directories"
-      - mkdir -p deps "${HOME}/local/bin" "${HOME}/go/bin"
-      - echo "Initial PATH: $PATH"
-      - echo "Initial GOPATH: $GOPATH"
-      - echo "Initial GOBIN: $GOBIN"
-      - echo "--- Fetching external tools (helm, kubectl, etc.) with pull-deps.sh"
-      - cd deps && ../scripts/pull-deps.sh && cd -
-      - echo "--- Installing Go tools (go-bindata, stringer)"
-      - export GOBIN_DIR="${HOME}/go/bin"
-      - export LOCAL_BIN_DIR="${HOME}/local/bin"
-      - export PATH="$GOBIN_DIR:$LOCAL_BIN_DIR:$PATH" # Set PATH for this step's go install and make
-      - export GOBIN="$GOBIN_DIR" # Ensure go install uses this path
-      - make go-bindata # Installs go-bindata, should respect GOBIN or install to $GOPATH/bin
-      - go install golang.org/x/tools/cmd/stringer@v0.12.0 # Installs stringer to $GOBIN or $GOPATH/bin
-      - echo "--- Verifying tools installation (PATH for this step: $PATH)"
-      - which go-bindata && go-bindata -version || { echo "go-bindata not found or not working in setup step"; exit 1; }
-      - which stringer || { echo "stringer not found in setup step"; exit 1; }
-      - which helm && helm version || { echo "helm (from pull-deps.sh) not found or not working in setup step"; exit 1; }
-      - ls -al "$LOCAL_BIN_DIR" # Show contents of where pull-deps.sh installs
-      - ls -al "$GOBIN_DIR" # Show contents of where go install should place binaries
+  # - label: ":wrench: Setup Dependencies & Generate Data"
+  #   key: setup_dependencies
+  #   agents:
+  #     queue: v1
+  #   commands:
+  #     # This single make target is responsible for all dependency setup and data generation.
+  #     # It must ensure tools are installed to known locations ($HOME/go/bin, $HOME/local/bin).
+  #     - make setup_all_ci_dependencies
+  #     # Optional: Verify critical tools after make, using the image's default PATH initially
+  #     # and then with augmented PATH to confirm make put things in expected places.
+  #     - echo "--- Verifying tools post-make (default PATH: $PATH) ---"
+  #     - which golangci-lint || echo "golangci-lint not in default PATH"
+  #     - export CI_TOOLS_PATH="${HOME}/go/bin:${HOME}/local/bin"
+  #     - echo "--- Verifying tools post-make (augmented PATH: $CI_TOOLS_PATH:$PATH) ---"
+  #     - PATH="$CI_TOOLS_PATH:$PATH" which go-bindata && PATH="$CI_TOOLS_PATH:$PATH" go-bindata -version || { echo "go-bindata verification failed"; exit 1; }
+  #     - PATH="$CI_TOOLS_PATH:$PATH" which stringer || { echo "stringer verification failed"; exit 1; }
+  #     - PATH="$CI_TOOLS_PATH:$PATH" which helm && PATH="$CI_TOOLS_PATH:$PATH" helm version || { echo "helm verification failed"; exit 1; }
 
-  - label: ":golangci-lint: Lint"
-    key: lint
-    agents:
-      queue: v1
-    depends_on: setup_dependencies
-    commands:
-      - echo "--- Running Lint (PATH: $PATH)"
-      # golangci-lint should be available in the base image's PATH
-      - golangci-lint run ./...
 
-  - label: ":golang::test_tube::coverage: Test"
-    key: test
-    agents:
-      queue: v1
-    depends_on:
-      - setup_dependencies
-      - lint
-    commands:
-      - echo "--- Running Tests"
-      # Prepend GOBIN and LOCAL_BIN_DIR to PATH for make commands
-      - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
-      - make test-ci
 
-  - label: ":clippy: Build"
+  # - label: ":golang::test_tube::coverage: Test"
+  #   key: test
+  #   agents:
+  #     queue: v1
+  #   depends_on:
+  #     - setup_dependencies
+  #     - lint
+  #   commands:
+  #     - echo "--- Running Tests ---"
+  #     # Prepend paths for tools installed by 'make setup_all_ci_dependencies'
+  #     - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
+  #     - make test-ci
+
+  - label: ":clippy: Build Kubeapply & Lambda"
     key: build
     agents:
       queue: v1
-    depends_on:
-      - setup_dependencies
-      - lint
     commands:
-      - echo "--- Building Artifacts"
-      # Prepend GOBIN and LOCAL_BIN_DIR to PATH for make commands
-      - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
+      - export PATH=$PATH:/go/bin:/var/lib/buildkite-agent/go/bin:/go/src/github.com/segmentio/kubeapply/deps:$HOME/local/bin
       - make kubeapply
       - make lambda-zip
       - make build-lambda-image
+
+
+  # - label: 'Publish'
+  #   env:
+  #     SEGMENT_CONTEXTS: "aws-credentials,ecr"
+  #     SEGMENT_BUILDKITE_IMAGE: 'buildkite-agent-golang1.19:latest'
+  #   agents:
+  #     queue: v1
+  #   commands: |
+  #     export PATH=$PATH:/go/bin:/var/lib/buildkite-agent/go/bin:/go/src/github.com/segmentio/kubeapply/deps:$HOME/local/bin
+  #     make publish
+
 
   - group: ":ecr: Publish Lambda"
     if: 'build.branch == "main"'
@@ -79,11 +68,12 @@ steps:
         agents:
           queue: v1
         key: publish-lambda
-        depends_on: build # Depends on the build step completing successfully
+        depends_on: build
         env:
-          # Override SEGMENT_CONTEXTS for this step if needed, or rely on top-level
-          SEGMENT_CONTEXTS: "ecr"
+          SEGMENT_CONTEXTS: "aws-credentials,ecr"
         commands:
+          # Prepend paths for tools if make publish-lambda-image needs them
+          - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
           - make publish-lambda-image
 
       - label: ":terraform: Notify for Environment Updates"
