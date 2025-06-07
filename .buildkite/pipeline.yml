@@ -1,55 +1,73 @@
 env:
-  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23:latest"
+  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
   GOPRIVATE: "github.com/segmentio"
-  GOFLAGS: "-mod=vendor" # Project-specific Go flags
-  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk" # Default Segment contexts
-  # Explicitly set GOPATH and augment PATH for Go tools and custom scripts
-  # Assumes Go itself is in /usr/local/go/bin from the buildkite image
-  GOPATH: "${HOME}/go"
-  PATH: "/usr/local/go/bin:${HOME}/go/bin:${HOME}/local/bin:$${PATH}"
+  GOFLAGS: "-mod=vendor"
+  SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
+  # GOPATH and PATH are intentionally not set globally to rely on the agent image's defaults,
+  # reducing potential conflicts with agent bootstrap scripts.
+  # PATH will be augmented in specific steps as needed.
 
 steps:
-  - label: ":gear: Bootstrap Dependencies"
-    key: bootstrap_dependencies
+  - label: ":wrench: Setup Dependencies"
+    key: setup_dependencies
     agents:
       queue: v1
     commands:
       - echo "--- Setting up directories"
-      - mkdir -p deps 
-      - echo "HOME: ${HOME}"
-      - echo "GOPATH: ${GOPATH}"
-      - echo "PATH: ${PATH}"
-      - echo "--- Installing external dependencies (helm, kubectl, etc.)"
+      - mkdir -p deps "${HOME}/local/bin" "${HOME}/go/bin"
+      - echo "Initial PATH: $PATH"
+      - echo "Initial GOPATH: $GOPATH"
+      - echo "Initial GOBIN: $GOBIN"
+      - echo "--- Fetching external tools (helm, kubectl, etc.) with pull-deps.sh"
       - cd deps && ../scripts/pull-deps.sh && cd -
-      - echo "--- Verifying external dependencies"
-      - which -a helm && helm version || { echo "Helm not found or not working. Check PATH and pull-deps.sh script."; exit 1; }
-      - echo "--- Installing Go build tools (go-bindata, stringer)"
-      # Ensure go-bindata is installed (Makefile target handles if-not-exists logic)
-      - make go-bindata
-      # Install stringer
-      - GOFLAGS="" go install golang.org/x/tools/cmd/stringer@v0.12.0
-      - echo "--- Verifying Go build tools"
-      - which -a go-bindata && go-bindata -version || { echo "go-bindata not found or not working. Check PATH and GOPATH."; exit 1; }
-      - which -a stringer || { echo "stringer not found or not working. Check PATH and GOPATH."; exit 1; }
+      - echo "--- Installing Go tools (go-bindata, stringer)"
+      - export GOBIN_DIR="${HOME}/go/bin"
+      - export LOCAL_BIN_DIR="${HOME}/local/bin"
+      - export PATH="$GOBIN_DIR:$LOCAL_BIN_DIR:$PATH" # Set PATH for this step's go install and make
+      - export GOBIN="$GOBIN_DIR" # Ensure go install uses this path
+      - make go-bindata # Installs go-bindata, should respect GOBIN or install to $GOPATH/bin
+      - go install golang.org/x/tools/cmd/stringer@v0.12.0 # Installs stringer to $GOBIN or $GOPATH/bin
+      - echo "--- Verifying tools installation (PATH for this step: $PATH)"
+      - which go-bindata && go-bindata -version || { echo "go-bindata not found or not working in setup step"; exit 1; }
+      - which stringer || { echo "stringer not found in setup step"; exit 1; }
+      - which helm && helm version || { echo "helm (from pull-deps.sh) not found or not working in setup step"; exit 1; }
+      - ls -al "$LOCAL_BIN_DIR" # Show contents of where pull-deps.sh installs
+      - ls -al "$GOBIN_DIR" # Show contents of where go install should place binaries
+
+  - label: ":golangci-lint: Lint"
+    key: lint
+    agents:
+      queue: v1
+    depends_on: setup_dependencies
+    commands:
+      - echo "--- Running Lint (PATH: $PATH)"
+      # golangci-lint should be available in the base image's PATH
+      - golangci-lint run ./...
 
   - label: ":golang::test_tube::coverage: Test"
     key: test
     agents:
       queue: v1
-    depends_on: bootstrap_dependencies
+    depends_on:
+      - setup_dependencies
+      - lint
     commands:
       - echo "--- Running Tests"
-      # make test-ci should handle its own dependencies like 'make data' if needed
+      # Prepend GOBIN and LOCAL_BIN_DIR to PATH for make commands
+      - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
       - make test-ci
 
   - label: ":clippy: Build"
     key: build
     agents:
       queue: v1
-    depends_on: bootstrap_dependencies
+    depends_on:
+      - setup_dependencies
+      - lint
     commands:
       - echo "--- Building Artifacts"
-      # These make targets should handle their own dependencies (e.g., 'make data')
+      # Prepend GOBIN and LOCAL_BIN_DIR to PATH for make commands
+      - export PATH="${HOME}/go/bin:${HOME}/local/bin:$PATH"
       - make kubeapply
       - make lambda-zip
       - make build-lambda-image
