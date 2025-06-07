@@ -3,7 +3,9 @@ env:
   GOPRIVATE: "github.com/segmentio"
   GOFLAGS: "-mod=vendor"
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
-  PATH: "/go/bin:${HOME}/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/go/bin:$${PATH}"
+  PATH: "/go/bin:${GOPATH}/bin:${HOME}/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/go/bin:$${PATH}"
+  GOPATH: "/go"
+  HOME: "/var/lib/buildkite-agent"
 
 
 steps:
@@ -15,11 +17,20 @@ steps:
       - mkdir -p deps
       - mkdir -p "${HOME}/local/bin"
       - cd deps && ../scripts/pull-deps.sh && cd -
+      - echo "--- Installing go tools"
+      - go install golang.org/x/tools/cmd/stringer@v0.12.0
+      - go install github.com/go-bindata/go-bindata/go-bindata@v3.1.2
       - echo "--- Verifying PATH and dependencies"
-      - env | grep PATH
+      - echo "PATH=$PATH"
+      - echo "GOPATH=$GOPATH"
+      - echo "HOME=$HOME"
       - ls -al "${HOME}/local/bin"
+      - echo "--- Verifying required binaries"
       - which -a helm
       - helm version || { echo "Helm not found or not working"; exit 1; }
+      - which -a go-bindata
+      - go-bindata -version || { echo "go-bindata not found or not working"; exit 1; }
+      - which -a stringer || { echo "stringer not found or not working"; exit 1; }
 
   - label: ":package: Install dependencies"
     agents:
