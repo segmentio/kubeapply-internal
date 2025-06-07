@@ -32,9 +32,21 @@ pushd ${TEMP_DIR}
 
 $REPO_ROOT/scripts/pull-deps.sh
 
-zip -r9 $OUTPUT_ZIP helm
-zip -r9 $OUTPUT_ZIP aws-iam-authenticator
-zip -r9 $OUTPUT_ZIP kubectl
+# Check if binaries exist in the current directory, if not try to find them
+for bin in helm aws-iam-authenticator kubectl; do
+  if [[ -f "${bin}" ]]; then
+    # Binary found in current directory
+    echo "Adding ${bin} from current directory"
+    zip -r9 $OUTPUT_ZIP ${bin}
+  elif [[ -f "${HOME}/local/bin/${bin}" ]]; then
+    # Binary found in HOME/local/bin
+    echo "Adding ${bin} from ${HOME}/local/bin"
+    cp "${HOME}/local/bin/${bin}" .
+    zip -r9 $OUTPUT_ZIP ${bin}
+  else
+    echo "Warning: Could not find ${bin} in current directory or ${HOME}/local/bin"
+  fi
+done
 
 echo "Created bundle ${OUTPUT_ZIP}"
 
