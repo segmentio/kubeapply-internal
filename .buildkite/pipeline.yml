@@ -3,6 +3,7 @@ env:
   GOPRIVATE: "github.com/segmentio"
   GOFLAGS: "-mod=vendor"
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
+  PATH: "/go/bin:${HOME}/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/go/bin:$${PATH}"
 
 
 steps:
@@ -11,13 +12,14 @@ steps:
       queue: v1
     key: install-deps
     commands:
-      - export PATH="/go/bin:$${HOME}/local/bin:$${PATH}"
       - mkdir -p deps
       - mkdir -p "${HOME}/local/bin"
       - cd deps && ../scripts/pull-deps.sh && cd -
+      - echo "--- Verifying PATH and dependencies"
       - env | grep PATH
       - ls -al "${HOME}/local/bin"
       - which -a helm
+      - helm version || { echo "Helm not found or not working"; exit 1; }
 
   - label: ":package: Install dependencies"
     agents:
@@ -25,10 +27,11 @@ steps:
     key: kubeapply
     depends_on: install-deps
     commands:
-      - export PATH="/go/bin:$${HOME}/local/bin:$${PATH}"
-      - echo "--- Go Environment Check"
+      - echo "--- Environment Check"
       - which go || echo "Go not found in PATH!"
       - go version || echo "Go version check failed!"
+      - which helm || echo "Helm not found in PATH!"
+      - helm version || echo "Helm version check failed!"
       - echo "--- PATH Environment"
       - echo $PATH
       - echo "--- Installing dependencies"
@@ -40,12 +43,14 @@ steps:
     key: test
     depends_on: kubeapply
     commands:
-      - export PATH="/go/bin:$${HOME}/local/bin:$${PATH}"
-      - echo "--- Go Environment Check"
+      - echo "--- Environment Check"
       - which go || echo "Go not found in PATH!"
       - go version || echo "Go version check failed!"
+      - which helm || echo "Helm not found in PATH!"
+      - helm version || echo "Helm version check failed!"
       - echo "--- PATH Environment"
       - echo $PATH
+      - echo "--- Running Tests"
       - |
         make test-ci || {
           echo "Using test-ci target because kind is not supported in CI yet"
