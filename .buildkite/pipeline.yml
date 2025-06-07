@@ -1,5 +1,16 @@
 env:
-  SEGMENT_BUILDKITE_IMAGE: "buildkite-agent-golang1.23"
+  S  - label: ":wrench: Install CI dependencies"
+    agents:
+      queue: v1
+    key: install-deps
+    commands:
+      - mkdir -p deps
+      - mkdir -p "${HOME}/local/bin"
+      - cd deps && ../scripts/pull-deps.sh && cd -
+      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
+      - env | grep PATH
+      - ls -al "${HOME}/local/bin"
+      - which -a helmKITE_IMAGE: "buildkite-agent-golang1.23"
   GOPRIVATE: "github.com/segmentio"
   GOFLAGS: "-mod=vendor"
   SEGMENT_CONTEXTS: "aws-credentials,ecr,snyk"
@@ -39,7 +50,12 @@ steps:
     key: test
     depends_on: kubeapply
     commands:
-      - export PATH="${HOME}/local/bin:$PATH"
+      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
+      - echo "--- Go Environment Check"
+      - which go || echo "Go not found in PATH!"
+      - go version || echo "Go version check failed!"
+      - echo "--- PATH Environment"
+      - echo $PATH
       - make test-ci
 
   - label: ":go: Build"
@@ -48,6 +64,12 @@ steps:
     key: build
     depends_on: kubeapply
     commands:
+      - export PATH="/go/bin:${HOME}/local/bin:$PATH"
+      - echo "--- Go Environment Check"
+      - which go || echo "Go not found in PATH!"
+      - go version || echo "Go version check failed!"
+      - echo "--- PATH Environment"
+      - echo $PATH
       - make lambda-zip
       - make build-lambda-image
 
