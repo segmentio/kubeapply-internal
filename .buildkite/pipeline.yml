@@ -15,7 +15,7 @@ steps:
       queue: v1
     commands:
       - echo "--- Setting up directories"
-      - mkdir -p deps "${HOME}/local/bin" "${HOME}/go/bin"
+      - mkdir -p deps 
       - echo "HOME: ${HOME}"
       - echo "GOPATH: ${GOPATH}"
       - echo "PATH: ${PATH}"
