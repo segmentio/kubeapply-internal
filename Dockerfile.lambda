@@ -2,7 +2,8 @@
 
 FROM public.ecr.aws/lambda/provided:al2 as builder
 
-ADD https://go.dev/dl/go1.21.5.linux-amd64.tar.gz /tmp/go1.21.5.linux-amd64.tar.gz
+ARG GO_VERSION=1.23.10
+ADD https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz /tmp/go${GO_VERSION}.linux-amd64.tar.gz
 
 ARG VERSION_REF
 RUN test -n "${VERSION_REF}"
@@ -23,7 +24,7 @@ RUN yum install -y \
 COPY . /go/src/${SRC}
 
 RUN cd /usr/local \
-    && tar xf /tmp/go1.21.5.linux-amd64.tar.gz \
+    && tar xf /tmp/go${GO_VERSION}.linux-amd64.tar.gz \
     && cd /usr/local/bin \
     && go env \
     && /go/src/${SRC}/scripts/pull-deps.sh
