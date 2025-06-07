@@ -46,8 +46,8 @@ steps:
       - go version || echo "Go version check failed!"
       - echo "--- PATH Environment"
       - echo $PATH
-      - make test-ci
-      - test $? -eq 0 || {
+      - |
+        make test-ci || {
           echo "Using test-ci target because kind is not supported in CI yet"
           echo "TODO: Get kind tests working in CI"
           exit 1
