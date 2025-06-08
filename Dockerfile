@@ -1,5 +1,5 @@
 # Fetch or build all required binaries
-FROM golang:1.19.9 as builder
+FROM golang:1.23 as builder
 
 ARG VERSION_REF
 RUN test -n "${VERSION_REF}"
@@ -23,7 +23,7 @@ RUN make kubeapply VERSION_REF=${VERSION_REF} && \
     cp build/kubeapply /usr/local/bin
 
 # Copy into final image
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install --yes \
     curl \
