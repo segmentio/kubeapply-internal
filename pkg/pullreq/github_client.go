@@ -13,9 +13,9 @@ import (
 	"github.com/segmentio/kubeapply/pkg/config"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 const (
