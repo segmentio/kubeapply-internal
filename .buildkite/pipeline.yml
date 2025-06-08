@@ -1,4 +1,6 @@
-# Buildkite pipeline for kubeapply - a lightweight tool for git-based Kubernetes config management
+# Buildkite CI/CD pipeline for kubeapply - a lightweight tool for git-based Kubernetes config management
+# This pipeline handles testing, building binaries, and pushing Docker images to ECR
+# Images deployed to stage on master branch, prod on version tags
 # Reference: https://buildkite.com/docs/pipelines/configure
 # Segment Team-Supported Runtimes: https://segment.atlassian.net/wiki/spaces/INFRA/pages/2575433823
 
@@ -177,26 +179,29 @@ steps:
   # Final wait for all steps to complete
   - wait: ~
 
-  # Step 7: Release (only for version tags)
-  - label: ":ship: GitHub Release"
-    key: release
+  # Step 7: Build and push Docker images to ECR (only on main branch or tags)
+  - label: ":docker: Build and Push Lambda Images"
+    key: docker-push
     depends_on:
       - build-lambda
+      - test
       - security
-      - integration-test
-    # Only run on version tags (v1.2.3 format)
-    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    # Only run on main branch or version tags
+    if: build.branch == "master" || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     env:
-      SEGMENT_CONTEXTS: "aws-credentials"
-      SEGMENT_GITHUB_APP: "release-writer"
+      SEGMENT_CONTEXTS: "aws-credentials,ecr"
     commands:
-      # Download all build artifacts
-      - buildkite-agent artifact download "build/*" .
-      # Create GitHub release with artifacts
+      # Determine environment based on branch/tag
       - |
-        gh release create "${BUILDKITE_TAG}" \
-          --title "kubeapply ${BUILDKITE_TAG}" \
-          --generate-notes \
-          build/kubeapply \
-          build/kubeapply-server \
-          build/kubeapply-lambda
+        if [[ "${BUILDKITE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          ENV="prod"
+        else
+          ENV="stage"
+        fi
+        export ENV
+      # Build and push Docker images using imager
+      - |
+        imager buildpush . -f Dockerfile.lambda -d all-${ENV} \
+          --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
+          --destination-aliases regions.yaml \
+          --repository kubeapply-lambda --local
