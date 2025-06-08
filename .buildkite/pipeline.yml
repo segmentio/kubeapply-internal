@@ -71,6 +71,9 @@ steps:
       # Disable Kind clusters in CI (as noted in Makefile)
       KIND_ENABLED: "false"
     commands:
+      # Install required testing dependencies
+      - curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar -xzO linux-amd64/helm > /tmp/helm && chmod +x /tmp/helm && sudo mv /tmp/helm /usr/local/bin/
+      - go install github.com/yannh/kubeconform/cmd/kubeconform@latest
       # Run tests without Kind support (test-ci target)
       - make test-ci
     plugins:
@@ -157,6 +160,8 @@ steps:
     key: security
     depends_on: vendor
     command: "bk-snyk"
+    env:      
+      SEGMENT_CONTEXTS: "snyk,aws-credentials"
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
