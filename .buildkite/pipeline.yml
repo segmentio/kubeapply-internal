@@ -36,6 +36,8 @@ steps:
   - label: ":golangci-lint: Linting"
     key: lint
     commands:
+      # Install goimports for formatting
+      - go install golang.org/x/tools/cmd/goimports@latest
       - make fmtgo
       - golangci-lint run ./...
     plugins:
