@@ -2,6 +2,8 @@ package validation
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/yannh/kubeconform/pkg/validator"
@@ -17,11 +19,22 @@ var _ Checker = (*KubeconformChecker)(nil)
 
 // NewKubeconformChecker creates a new KubeconformChecker instance.
 func NewKubeconformChecker() (*KubeconformChecker, error) {
+	// Use the default schema location for Kubernetes schemas
+	schemaLocations := []string{
+		"default",
+	}
+	
+	// Set up cache directory for schemas
+	cacheDir := filepath.Join(os.TempDir(), "kubeconform-cache")
+	os.MkdirAll(cacheDir, 0755)
+	
 	validatorObj, err := validator.New(
-		nil,
+		schemaLocations,
 		validator.Opts{
-			IgnoreMissingSchemas: true,
+			Cache:                cacheDir,
+			IgnoreMissingSchemas: false,
 			Strict:               true,
+			KubernetesVersion:    "1.27.0",
 		},
 	)
 	if err != nil {
