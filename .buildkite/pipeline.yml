@@ -204,4 +204,4 @@ steps:
         imager buildpush . -f Dockerfile.lambda -d all-${ENV} \
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
-          --repository kubeapply-lambda --local
+          --repository kubeapply-lambda
