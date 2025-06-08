@@ -75,6 +75,8 @@ steps:
       - mkdir -p ~/bin
       - curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar -xzO linux-amd64/helm > ~/bin/helm && chmod +x ~/bin/helm
       - go install github.com/yannh/kubeconform/cmd/kubeconform@latest
+      # Pre-download kubeconform schemas to avoid skipped validation in tests
+      - PATH="$${HOME}/bin:$${HOME}/go/bin:$$PATH" kubeconform -schema-location default -summary /dev/null || true
       # Run tests without Kind support (test-ci target) - include both ~/bin and go bin paths
       - PATH="$${HOME}/bin:$${HOME}/go/bin:$$PATH" make test-ci
     plugins:
