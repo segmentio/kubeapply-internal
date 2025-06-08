@@ -38,8 +38,8 @@ kubeapply-server: data
 
 # Test and formatting targets
 .PHONY: test
-test: data vet $(TEST_KUBECONFIG)
-	KIND_ENABLED=true go test -count=1 -cover ./...
+test: data vet kubeapply $(TEST_KUBECONFIG)
+	PATH="$(PWD)/build:$$PATH" KIND_ENABLED=true go test -count=1 -cover ./...
 
 .PHONY: test-ci
 test-ci: data vet
