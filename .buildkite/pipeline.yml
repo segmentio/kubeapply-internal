@@ -127,6 +127,7 @@ steps:
       - make kubeapply-lambda
       - make kubeapply-lambda-kubeapply
       - buildkite-agent artifact upload "build/kubeapply-lambda"
+      # Note: Lambda deployment uses Docker images pushed to ECR via separate process
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -137,28 +138,7 @@ steps:
   # Wait for all builds and tests to complete
   - wait: ~
 
-  # Step 5: Create Lambda deployment bundle (only if all tests pass)
-  - label: ":package: Create Lambda Bundle"
-    key: lambda-bundle
-    depends_on:
-      - test
-      - build-lambda
-    commands:
-      # Download the lambda artifacts
-      - buildkite-agent artifact download "build/kubeapply-lambda" .
-      - buildkite-agent artifact download "build/kubeapply" .
-      # Create the lambda zip bundle
-      - make lambda-zip
-      # Upload the bundle as an artifact
-      - buildkite-agent artifact upload "kubeapply-lambda-*.zip"
-    plugins:
-      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
-          key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
-          paths:
-            - vendor/
-            - data/
-
-  # Step 6: Security scanning with Snyk (for dependency vulnerabilities)
+  # Step 5: Security scanning with Snyk (for dependency vulnerabilities)
   - label: ":lock: Security Scan"
     key: security
     depends_on: vendor
@@ -171,7 +151,7 @@ steps:
           paths:
             - vendor/
 
-  # Step 7: Integration test with example cluster (only on main branch)
+  # Step 6: Integration test with example cluster (only on main branch)
   - label: ":kubernetes: Integration Test"
     key: integration-test
     depends_on:
@@ -197,11 +177,11 @@ steps:
   # Final wait for all steps to complete
   - wait: ~
 
-  # Step 8: Release (only for version tags)
+  # Step 7: Release (only for version tags)
   - label: ":ship: GitHub Release"
     key: release
     depends_on:
-      - lambda-bundle
+      - build-lambda
       - security
       - integration-test
     # Only run on version tags (v1.2.3 format)
@@ -212,7 +192,6 @@ steps:
     commands:
       # Download all build artifacts
       - buildkite-agent artifact download "build/*" .
-      - buildkite-agent artifact download "kubeapply-lambda-*.zip" .
       # Create GitHub release with artifacts
       - |
         gh release create "${BUILDKITE_TAG}" \
@@ -220,5 +199,4 @@ steps:
           --generate-notes \
           build/kubeapply \
           build/kubeapply-server \
-          build/kubeapply-lambda \
-          kubeapply-lambda-*.zip
+          build/kubeapply-lambda
