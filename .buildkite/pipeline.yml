@@ -187,7 +187,7 @@ steps:
       - test
       - security
     # Only run on main branch or version tags
-    if: build.branch == "master" || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    # if: build.branch == "master" || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     env:
       SEGMENT_CONTEXTS: "aws-credentials,ecr"
     commands:
