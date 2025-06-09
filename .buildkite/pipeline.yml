@@ -82,11 +82,9 @@ steps:
     key: build-cli
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply
-      # Create artifact for potential distribution
-      - buildkite-agent artifact upload "build/kubeapply"
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -98,10 +96,9 @@ steps:
     key: build-server
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply-server
-      - buildkite-agent artifact upload "build/kubeapply-server"
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -113,7 +110,7 @@ steps:
     key: build-lambda
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply-lambda
       - make kubeapply-lambda-kubeapply
