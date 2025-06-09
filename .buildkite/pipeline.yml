@@ -216,44 +216,44 @@ steps:
       - echo "Creating PR to deploy to stage environment..."
       - |
         # Get the image tag from the previous step
-        IMAGE_TAG="$(git describe --tags --always --dirty="-dev")"
-        echo "Deploying image tag: $IMAGE_TAG"
+        IMAGE_TAG=$$(git describe --tags --always --dirty="-dev")
+        echo "Deploying image tag: $$IMAGE_TAG"
         
         # Clone terracode-infra repository 
         git clone https://github.com/segmentio/terracode-infra.git /tmp/terracode-infra
         cd /tmp/terracode-infra
         
         # Create a new branch for the deployment
-        BRANCH_NAME="kubeapply-stage-deploy-$IMAGE_TAG-$(date +%s)"
-        git checkout -b "$BRANCH_NAME"
+        BRANCH_NAME="kubeapply-stage-deploy-$$IMAGE_TAG-$$(date +%s)"
+        git checkout -b "$$BRANCH_NAME"
         
         # Update stage terraform configs with new image tag
-        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" stage/eu-west-1/common-kubeapply/config.tf
-        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" stage/us-west-2/core/kubeapply/config.tf
+        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$$IMAGE_TAG\"/" stage/eu-west-1/common-kubeapply/config.tf
+        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$$IMAGE_TAG\"/" stage/us-west-2/core/kubeapply/config.tf
         
         # Commit and push changes
         git add stage/*/kubeapply/config.tf stage/*/common-kubeapply/config.tf
-        git commit -m "Deploy kubeapply $IMAGE_TAG to stage"
-        git push origin "$BRANCH_NAME"
+        git commit -m "Deploy kubeapply $$IMAGE_TAG to stage"
+        git push origin "$$BRANCH_NAME"
         
         # Create pull request and capture URL
-        PR_URL=$(gh pr create \
-          --title "Deploy kubeapply $IMAGE_TAG to stage" \
-          --body "Automated deployment of kubeapply image tag \`$IMAGE_TAG\` to stage environment.
+        PR_URL=$$(gh pr create \
+          --title "Deploy kubeapply $$IMAGE_TAG to stage" \
+          --body "Automated deployment of kubeapply image tag \`$$IMAGE_TAG\` to stage environment.
 
         **Instructions:**
         1. Review the changes in this PR
         2. Comment \`atlantis apply\` to deploy to stage environment
         3. Merge this PR after successful deployment
 
-        **Image tag:** \`$IMAGE_TAG\`
+        **Image tag:** \`$$IMAGE_TAG\`
         **Environment:** Stage
         **Regions:** eu-west-1, us-west-2" \
-          --head "$BRANCH_NAME" \
+          --head "$$BRANCH_NAME" \
           --base master)
         
         echo "✅ Stage deployment PR created!"
-        echo "🔗 PR URL: $PR_URL"
+        echo "🔗 PR URL: $$PR_URL"
         echo "📋 Instructions: Go to the PR and comment 'atlantis apply' to deploy to stage."
 
   # Manual gate before production deployment
@@ -273,41 +273,41 @@ steps:
       - echo "Creating PR to deploy to production environment..."
       - |
         # Get the image tag from the previous step
-        IMAGE_TAG="$(git describe --tags --always --dirty="-dev")"
-        echo "Deploying image tag: $IMAGE_TAG"
+        IMAGE_TAG=$$(git describe --tags --always --dirty="-dev")
+        echo "Deploying image tag: $$IMAGE_TAG"
         
         # Clone terracode-infra repository
         git clone https://github.com/segmentio/terracode-infra.git /tmp/terracode-infra-prod
         cd /tmp/terracode-infra-prod
         
         # Create a new branch for the production deployment
-        BRANCH_NAME="kubeapply-prod-deploy-$IMAGE_TAG-$(date +%s)"
-        git checkout -b "$BRANCH_NAME"
+        BRANCH_NAME="kubeapply-prod-deploy-$$IMAGE_TAG-$$(date +%s)"
+        git checkout -b "$$BRANCH_NAME"
         
         # Update production terraform config with new image tag
-        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" production/us-west-2/core/kubeapply/config.tf
+        sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$$IMAGE_TAG\"/" production/us-west-2/core/kubeapply/config.tf
         
         # Commit and push changes
         git add production/*/kubeapply/config.tf
-        git commit -m "Deploy kubeapply $IMAGE_TAG to production"
-        git push origin "$BRANCH_NAME"
+        git commit -m "Deploy kubeapply $$IMAGE_TAG to production"
+        git push origin "$$BRANCH_NAME"
         
         # Create pull request and capture URL
-        PR_URL=$(gh pr create \
-          --title "Deploy kubeapply $IMAGE_TAG to production" \
-          --body "Automated deployment of kubeapply image tag \`$IMAGE_TAG\` to production environment.
+        PR_URL=$$(gh pr create \
+          --title "Deploy kubeapply $$IMAGE_TAG to production" \
+          --body "Automated deployment of kubeapply image tag \`$$IMAGE_TAG\` to production environment.
 
         **Instructions:**
         1. Review the changes in this PR carefully
         2. Comment \`atlantis apply\` to deploy to production environment
         3. Merge this PR after successful deployment
 
-        **Image tag:** \`$IMAGE_TAG\`
+        **Image tag:** \`$$IMAGE_TAG\`
         **Environment:** Production
         **Region:** us-west-2" \
-          --head "$BRANCH_NAME" \
+          --head "$$BRANCH_NAME" \
           --base master)
         
         echo "✅ Production deployment PR created!"
-        echo "🔗 PR URL: $PR_URL"
+        echo "🔗 PR URL: $$PR_URL"
         echo "📋 Instructions: Go to the PR and comment 'atlantis apply' to deploy to production."
