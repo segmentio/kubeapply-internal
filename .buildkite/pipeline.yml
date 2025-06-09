@@ -201,7 +201,7 @@ steps:
         export ENV
       # Build and push Docker images using imager
       - |
-        imager buildpush . -f Dockerfile.lambda -d all \
+        imager buildpush . -f Dockerfile.lambda \
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
           --repository kubeapply-lambda
