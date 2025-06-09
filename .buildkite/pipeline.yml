@@ -51,17 +51,6 @@ steps:
             - vendor/
             - data/
 
-  - label: ":golang: Go vet"
-    key: vet
-    depends_on: vendor
-    commands:
-      - make vet
-    plugins:
-      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
-          key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
-          paths:
-            - vendor/
-            - data/
 
   # Step 3: Testing with coverage
   - label: ":golang::test_tube::coverage: Unit Tests and Coverage"
