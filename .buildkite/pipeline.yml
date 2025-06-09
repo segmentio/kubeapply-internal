@@ -223,6 +223,10 @@ steps:
         git clone https://github.com/segmentio/terracode-infra.git /tmp/terracode-infra
         cd /tmp/terracode-infra
         
+        # Configure git user for commits
+        git config user.email "buildkite-agent-reader@segment.com"
+        git config user.name "buildkite-kubeapply-pipeline"
+        
         # Create a new branch for the deployment
         BRANCH_NAME="kubeapply-stage-deploy-$$IMAGE_TAG-$$(date +%s)"
         git checkout -b "$$BRANCH_NAME"
@@ -279,6 +283,10 @@ steps:
         # Clone terracode-infra repository
         git clone https://github.com/segmentio/terracode-infra.git /tmp/terracode-infra-prod
         cd /tmp/terracode-infra-prod
+        
+        # Configure git user for commits
+        git config user.email "buildkite-agent-reader@segment.com"
+        git config user.name "buildkite-kubeapply-pipeline"
         
         # Create a new branch for the production deployment
         BRANCH_NAME="kubeapply-prod-deploy-$$IMAGE_TAG-$$(date +%s)"
