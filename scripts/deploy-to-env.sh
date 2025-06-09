@@ -93,6 +93,20 @@ if [[ "$CREATE_PR" == "true" ]]; then
     echo "✅ Pull request created!"
     echo "🔗 PR URL: $PR_URL"
     echo "📋 Instructions: Go to the PR and comment 'atlantis apply' to deploy to $ENVIRONMENT."
+    
+    # Add Buildkite annotation with deployment information
+    buildkite-agent annotate --style info "🚀 **Deployment PR Created**
+
+📦 **Image tag:** \`$IMAGE_TAG\`  
+🌍 **Environment:** $ENVIRONMENT  
+🗺️ **Regions:** $REGIONS
+
+🔗 **[View Deployment PR]($PR_URL)**
+
+**Next Steps:**
+1. Review the changes in the deployment PR
+2. Comment \`atlantis apply\` on the PR to deploy to $ENVIRONMENT
+3. Merge the PR after successful deployment"
 else
     echo "📋 Branch ready for manual PR creation: $BRANCH_NAME"
     echo "🔗 Create PR at: https://github.com/segmentio/terracode-infra/compare/master...$BRANCH_NAME"
