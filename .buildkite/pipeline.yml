@@ -132,9 +132,6 @@ steps:
             - vendor/
             - data/
 
-  # Wait for all builds and tests to complete
-  - wait: ~
-
   # Step 5: Security scanning with Snyk (for dependency vulnerabilities)
   - label: ":lock: Security Scan"
     key: security
@@ -170,9 +167,6 @@ steps:
           paths:
             - vendor/
             - data/
-
-  # Final wait for all steps to complete
-  - wait: ~
 
   # Step 7: Build and push Docker images to ECR (only on main branch or tags)
   - label: ":docker: Build and Push Lambda Images"
