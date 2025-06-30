@@ -96,8 +96,7 @@ steps:
       - vet
     commands:
       - make kubeapply
-      # Create artifact for potential distribution
-      - buildkite-agent artifact upload "build/kubeapply"
+      # Artifact not used
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -112,7 +111,6 @@ steps:
       - vet
     commands:
       - make kubeapply-server
-      - buildkite-agent artifact upload "build/kubeapply-server"
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -128,7 +126,6 @@ steps:
     commands:
       - make kubeapply-lambda
       - make kubeapply-lambda-kubeapply
-      - buildkite-agent artifact upload "build/kubeapply-lambda"
       # Note: Lambda deployment uses Docker images pushed to ECR via separate process
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
