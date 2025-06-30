@@ -1,13 +1,13 @@
 # Buildkite CI/CD pipeline for kubeapply - a lightweight tool for git-based Kubernetes config management
 # This pipeline handles testing, building binaries, and pushing Docker images to ECR
-# Images deployed to stage on master branch, prod on version tags
+# Images deployed to stage on default branch, prod on version tags
 # Reference: https://buildkite.com/docs/pipelines/configure
 # Segment Team-Supported Runtimes: https://segment.atlassian.net/wiki/spaces/INFRA/pages/2575433823
 
 env:
   # Enable access to Segment AWS resources and ECR for container builds
   SEGMENT_CONTEXTS: "aws-credentials,ecr"
-  # Use Go 1.20 runtime (matching go.mod)
+  # Use Go 1.23 runtime (matching go.mod)
   SEGMENT_BUILDKITE_IMAGE: buildkite-agent-golang1.23
   # Configure Go to work with Segment private repositories
   GOPRIVATE: "github.com/segmentio"
@@ -159,16 +159,16 @@ steps:
     depends_on:
       - build-cli
       - test
-    # Only run integration tests on main branch to avoid excessive resource usage
-    if: build.branch == "master"
+    # Only run integration tests on default branch to avoid excessive resource usage
+    if: build.branch == pipeline.default_branch
     commands:
       # Download the CLI binary
       - buildkite-agent artifact download "build/kubeapply" .
       - chmod +x build/kubeapply
       # Test config expansion on example cluster
-      - cd examples/kubeapply-test-cluster
-      - ../../build/kubeapply expand cluster-local1.yaml
-      - ../../build/kubeapply validate cluster-local1.yaml
+      - cd examples/kubeapply-test-cluster && \
+        ../../build/kubeapply expand cluster-local1.yaml && \
+        ../../build/kubeapply validate cluster-local1.yaml
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -186,8 +186,8 @@ steps:
       - build-lambda
       - test
       - security
-    # Only run on main branch or version tags
-    if: build.branch == "master" || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    # Only run on default branch or version tags
+    if: build.branch == pipeline.default_branch || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     env:
       SEGMENT_CONTEXTS: "aws-credentials,ecr"
     commands:
