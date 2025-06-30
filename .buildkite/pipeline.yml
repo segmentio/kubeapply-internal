@@ -9,8 +9,6 @@ env:
   SEGMENT_CONTEXTS: "aws-credentials,ecr"
   # Use Go 1.23 runtime (matching go.mod)
   SEGMENT_BUILDKITE_IMAGE: buildkite-agent-golang1.23
-  # Configure Go to work with Segment private repositories
-  GOPRIVATE: "github.com/segmentio"
 
 steps:
   # Step 1: Dependency management and caching
