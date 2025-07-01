@@ -1,13 +1,13 @@
 # Fetch or build all required binaries
 
-FROM public.ecr.aws/lambda/provided:al2 as builder
+FROM public.ecr.aws/lambda/provided:al2 AS builder
 
-ADD https://go.dev/dl/go1.21.5.linux-amd64.tar.gz /tmp/go1.21.5.linux-amd64.tar.gz
+ADD https://go.dev/dl/go1.23.10.linux-amd64.tar.gz /tmp/go1.23.10.linux-amd64.tar.gz
 
 ARG VERSION_REF
 RUN test -n "${VERSION_REF}"
 
-ENV SRC github.com/segmentio/kubeapply
+ENV SRC=github.com/segmentio/kubeapply
 ENV PATH=/usr/local/go/bin:/root/go/bin:/var/lang/bin:/usr/local/bin:/usr/bin/:/bin:/opt/bin
 
 RUN yum install -y \
@@ -23,7 +23,7 @@ RUN yum install -y \
 COPY . /go/src/${SRC}
 
 RUN cd /usr/local \
-    && tar xf /tmp/go1.21.5.linux-amd64.tar.gz \
+    && tar xf /tmp/go1.23.10.linux-amd64.tar.gz \
     && cd /usr/local/bin \
     && go env \
     && /go/src/${SRC}/scripts/pull-deps.sh
