@@ -18,8 +18,7 @@ steps:
       # Generate data files from templates (required by this project)
       - make data
       # Download and vendor dependencies for caching
-      - go mod download
-      - go mod vendor
+      - make vendor
     plugins:
       # Cache vendored dependencies based on go.sum checksum
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
