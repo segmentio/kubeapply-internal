@@ -28,10 +28,14 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install --yes \
     curl \
     git \
+    unzip \
     python3 \
     python3-pip
 
-RUN pip3 install awscli
+RUN curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
 
 COPY --from=builder \
     /usr/local/bin/helm \
