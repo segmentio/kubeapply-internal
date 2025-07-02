@@ -37,6 +37,8 @@ steps:
     commands:
       # Install goimports for formatting
       - go install golang.org/x/tools/cmd/goimports@latest
+      # Run go mod vendor first to ensure vendor directory is consistent
+      - go mod vendor
       - make fmtgo
       # Run golangci-lint with reduced severity to allow build to pass
       # TODO: Fix linting issues and remove --issues-exit-code=0

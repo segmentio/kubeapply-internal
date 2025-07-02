@@ -68,7 +68,7 @@ data: go-bindata
 		./scripts/...
 
 .PHONY: fmtgo
-fmtgo:
+fmtgo: vendor
 	goimports -w $(GOFILES)
 
 .PHONY: fmtpy
