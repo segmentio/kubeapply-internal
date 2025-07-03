@@ -23,15 +23,19 @@ RUN make kubeapply VERSION_REF=${VERSION_REF} && \
     cp build/kubeapply /usr/local/bin
 
 # Copy into final image
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install --yes \
     curl \
     git \
+    unzip \
     python3 \
     python3-pip
 
-RUN pip3 install awscli
+RUN curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
 
 COPY --from=builder \
     /usr/local/bin/helm \

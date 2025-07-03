@@ -18,8 +18,7 @@ steps:
       # Generate data files from templates (required by this project)
       - make data
       # Download and vendor dependencies for caching
-      - go mod download
-      - go mod vendor
+      - make vendor
     plugins:
       # Cache vendored dependencies based on go.sum checksum
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
@@ -38,6 +37,8 @@ steps:
     commands:
       # Install goimports for formatting
       - go install golang.org/x/tools/cmd/goimports@latest
+      # Run go mod vendor first to ensure vendor directory is consistent
+      - go mod vendor
       - make fmtgo
       # Run golangci-lint with reduced severity to allow build to pass
       # TODO: Fix linting issues and remove --issues-exit-code=0
@@ -193,4 +194,4 @@ steps:
         imager buildpush . -f Dockerfile.lambda -d all-${ENV} \
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
-          --repository kubeapply-lambda --local
+          --repository kubeapply-lambda
