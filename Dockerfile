@@ -1,10 +1,10 @@
 # Fetch or build all required binaries
-FROM golang:1.23 as builder
+FROM golang:1.23.10 AS builder
 
 ARG VERSION_REF
 RUN test -n "${VERSION_REF}"
 
-ENV SRC github.com/segmentio/kubeapply
+ENV SRC=github.com/segmentio/kubeapply
 
 RUN apt-get update && apt-get install --yes \
     curl \
@@ -16,8 +16,8 @@ RUN cd /usr/local/bin && /go/src/${SRC}/scripts/pull-deps.sh
 
 WORKDIR /go/src/${SRC}
 
-ENV CGO_ENABLED=1
-ENV GO111MODULE=on
+ENV CGO_ENABLED=1 \
+    GO111MODULE=on
 
 RUN make kubeapply VERSION_REF=${VERSION_REF} && \
     cp build/kubeapply /usr/local/bin
@@ -28,10 +28,14 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install --yes \
     curl \
     git \
+    unzip \
     python3 \
     python3-pip
 
-RUN pip3 install awscli
+RUN curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
 
 COPY --from=builder \
     /usr/local/bin/helm \

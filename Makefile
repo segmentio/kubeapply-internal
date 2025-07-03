@@ -39,20 +39,28 @@ kubeapply-server: data
 # Test and formatting targets
 .PHONY: test
 test: data vet kubeapply $(TEST_KUBECONFIG)
+	go mod vendor
 	PATH="$(PWD)/build:$$PATH" KIND_ENABLED=true go test -count=1 -cover ./...
 
 .PHONY: test-ci
 test-ci: data vet
 	# Kind is not supported in CI yet.
 	# TODO: Get this working.
+	go mod vendor
 	KIND_ENABLED=false go test -count=1 -cover ./...
 
 .PHONY: vet
 vet: data
 	go vet ./...
 
+.PHONY: vendor
+vendor: go-bindata
+	go mod download
+	go mod vendor	
+
 .PHONY: data
 data: go-bindata
+	go mod vendor
 	go-bindata -pkg data -o ./data/data.go \
 		-ignore=.*\.pyc \
 		-ignore=.*__pycache__.* \
@@ -60,7 +68,7 @@ data: go-bindata
 		./scripts/...
 
 .PHONY: fmtgo
-fmtgo:
+fmtgo: vendor
 	goimports -w $(GOFILES)
 
 .PHONY: fmtpy
