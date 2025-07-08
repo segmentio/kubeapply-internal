@@ -50,17 +50,6 @@ steps:
             - vendor/
             - data/
 
-  - label: ":golang: Go vet"
-    key: vet
-    depends_on: vendor
-    commands:
-      - make vet
-    plugins:
-      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
-          key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
-          paths:
-            - vendor/
-            - data/
 
   # Step 3: Testing with coverage
   - label: ":golang::test_tube::coverage: Unit Tests and Coverage"
@@ -92,10 +81,9 @@ steps:
     key: build-cli
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply
-      # Artifact not used
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v3.0.1:
           key: "kubeapply-deps-{{ checksum \"go.sum\" }}"
@@ -107,7 +95,7 @@ steps:
     key: build-server
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply-server
     plugins:
@@ -121,7 +109,7 @@ steps:
     key: build-lambda
     depends_on: 
       - lint
-      - vet
+      - test
     commands:
       - make kubeapply-lambda
       - make kubeapply-lambda-kubeapply
@@ -195,3 +183,54 @@ steps:
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
           --repository kubeapply-lambda
+
+  # Step 8: Prepare stage deployment
+  - label: ":package: Prepare Stage Deployment"
+    key: prepare-stage
+    depends_on: docker-push
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
+    commands:
+      - echo "Preparing stage deployment branch..."
+      - chmod +x scripts/deploy-to-env.sh
+      - ./scripts/deploy-to-env.sh stage false
+
+  # Manual step to create stage PR
+  - block: ":point_right: Create Stage PR"
+    key: create-stage-pr
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
+    depends_on: prepare-stage
+    prompt: "Stage deployment branch is ready. Create PR?"
+    blocked_state: passed
+
+  # Step 9: Create stage deployment PR
+  - label: ":rocket: Create Stage PR" 
+    key: deploy-stage
+    depends_on: create-stage-pr
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
+    commands:
+      - echo "Creating stage deployment PR..."
+      - chmod +x scripts/deploy-to-env.sh
+      - ./scripts/deploy-to-env.sh stage true
+
+  # Manual gate before production deployment
+  - block: ":warning: Deploy to Production?"
+    key: production-gate
+    depends_on: deploy-stage
+    # Only run on version tags for production
+    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    prompt: "Stage deployment completed. Deploy to production?"
+    blocked_state: passed
+
+  # Step 10: Create production deployment PR
+  - label: ":rocket: Deploy to Production"
+    key: deploy-production
+    depends_on: production-gate
+    # Only run on version tags for production
+    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    commands:
+      - echo "Creating production deployment PR..."
+      - chmod +x scripts/deploy-to-env.sh
+      - ./scripts/deploy-to-env.sh production true
