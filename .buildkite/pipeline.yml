@@ -225,7 +225,9 @@ steps:
   # Step 10: Create production deployment PR
   - label: ":rocket: Deploy to Production"
     key: deploy-production
-    depends_on: production-gate    
+    depends_on: production-gate
+    # Only run on version tags for production
+    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     commands:
       - echo "Creating production deployment PR..."
       - chmod +x scripts/deploy-to-env.sh
