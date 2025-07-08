@@ -198,6 +198,8 @@ steps:
   # Manual step to create stage PR
   - block: ":point_right: Create Stage PR"
     key: create-stage-pr
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
     depends_on: prepare-stage
     prompt: "Stage deployment branch is ready. Create PR?"
     blocked_state: passed
