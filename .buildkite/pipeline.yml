@@ -188,8 +188,8 @@ steps:
   - label: ":package: Prepare Stage Deployment"
     key: prepare-stage
     depends_on: docker-push
-    # Only run stage deployment on main branch
-    if: build.branch == pipeline.default_branch
+    # Only run stage deployment on main branch or version tags
+    if: build.branch == pipeline.default_branch || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     commands:
       - echo "Preparing stage deployment branch..."
       - chmod +x scripts/deploy-to-env.sh
@@ -198,8 +198,8 @@ steps:
   # Manual step to create stage PR
   - block: ":point_right: Create Stage PR"
     key: create-stage-pr
-    # Only run stage deployment on main branch
-    if: build.branch == pipeline.default_branch
+    # Only run stage deployment on main branch or version tags
+    if: build.branch == pipeline.default_branch || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     depends_on: prepare-stage
     prompt: "Stage deployment branch is ready. Create PR?"
     blocked_state: passed
@@ -208,8 +208,8 @@ steps:
   - label: ":rocket: Create Stage PR" 
     key: deploy-stage
     depends_on: create-stage-pr
-    # Only run stage deployment on main branch
-    if: build.branch == pipeline.default_branch
+    # Only run stage deployment on main branch or version tags
+    if: build.branch == pipeline.default_branch || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     commands:
       - echo "Creating stage deployment PR..."
       - chmod +x scripts/deploy-to-env.sh
