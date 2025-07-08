@@ -41,17 +41,21 @@ if [[ "$ENVIRONMENT" == "stage" ]]; then
     echo "📝 Updating stage terraform configs..."
     sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" stage/eu-west-1/common-kubeapply/config.tf
     sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" stage/us-west-2/core/kubeapply/config.tf
-    git add stage/*/kubeapply/config.tf stage/*/common-kubeapply/config.tf
+    git add stage/*/*/kubeapply/config.tf stage/*/common-kubeapply/config.tf
     REGIONS="eu-west-1, us-west-2"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
     echo "📝 Updating production terraform config..."
     sed -i "s/lambda_image_tag.*=.*\".*\"/lambda_image_tag  = \"$IMAGE_TAG\"/" production/us-west-2/core/kubeapply/config.tf
-    git add production/*/kubeapply/config.tf
+    git add production/*/*/kubeapply/config.tf
     REGIONS="us-west-2"
 fi
 
 # Commit and push changes
-git commit -m "Deploy kubeapply $IMAGE_TAG to $ENVIRONMENT"
+if git diff --cached --quiet; then
+    echo "📝 No changes to commit - terraform configs already up to date with $IMAGE_TAG"
+else
+    git commit -m "Deploy kubeapply $IMAGE_TAG to $ENVIRONMENT"
+fi
 git push origin "$BRANCH_NAME"
 
 echo "✅ Branch created and pushed: $BRANCH_NAME"

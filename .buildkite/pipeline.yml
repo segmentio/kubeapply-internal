@@ -188,8 +188,8 @@ steps:
   - label: ":package: Prepare Stage Deployment"
     key: prepare-stage
     depends_on: docker-push
-    # Only run on main branch or version tags after successful image push
-    # if: build.branch == "master" || build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
     commands:
       - echo "Preparing stage deployment branch..."
       - chmod +x scripts/deploy-to-env.sh
@@ -206,6 +206,8 @@ steps:
   - label: ":rocket: Create Stage PR" 
     key: deploy-stage
     depends_on: create-stage-pr
+    # Only run stage deployment on main branch
+    if: build.branch == pipeline.default_branch
     commands:
       - echo "Creating stage deployment PR..."
       - chmod +x scripts/deploy-to-env.sh
@@ -215,15 +217,15 @@ steps:
   - block: ":warning: Deploy to Production?"
     key: production-gate
     depends_on: deploy-stage
+    # Only run on version tags for production
+    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
     prompt: "Stage deployment completed. Deploy to production?"
     blocked_state: passed
 
   # Step 10: Create production deployment PR
   - label: ":rocket: Deploy to Production"
     key: deploy-production
-    depends_on: production-gate
-    # Only run on version tags for production
-    if: build.env("BUILDKITE_TAG") =~ /^v[0-9]+\.[0-9]+\.[0-9]+/
+    depends_on: production-gate    
     commands:
       - echo "Creating production deployment PR..."
       - chmod +x scripts/deploy-to-env.sh
