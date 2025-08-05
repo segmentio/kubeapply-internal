@@ -169,16 +169,13 @@ steps:
     env:
       SEGMENT_CONTEXTS: "aws-credentials,ecr"
     commands:
-      # Determine environment based on branch/tag
+      # Build and push Docker images using imager
       - |
         if [[ "${BUILDKITE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           ENV="prod"
         else
           ENV="stage"
         fi
-        export ENV
-      # Build and push Docker images using imager
-      - |
         imager buildpush . -f Dockerfile.lambda -d "all-${ENV}" \
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
