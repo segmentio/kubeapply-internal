@@ -176,7 +176,7 @@ steps:
         else
           ENV="stage"
         fi
-        imager buildpush . -f Dockerfile.lambda -d "all-${ENV}" \
+        imager buildpush . -f Dockerfile.lambda -d "all-$${ENV}" \
           --build-arg VERSION_REF=$(git describe --tags --always --dirty="-dev") \
           --destination-aliases regions.yaml \
           --repository kubeapply-lambda
